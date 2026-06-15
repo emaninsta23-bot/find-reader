@@ -1,0 +1,7 @@
+flask
+gunicorn
+edge-tts
+PyMuPDF
+ebooklib
+beautifulsoup4
+python-docx

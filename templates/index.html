@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Find Reader — Ebook to Audiobook</title>
+  <style>
+    :root {
+      --bg:           #0a0b0f;
+      --surface:      #12141e;
+      --surface2:     #1a1d2e;
+      --border:       #252840;
+      --accent:       #7c6af7;
+      --accent-glow:  rgba(124, 106, 247, 0.15);
+      --accent-light: #a899fa;
+      --text:         #e2e4f0;
+      --muted:        #6b7280;
+      --green:        #22c55e;
+      --red:          #ef4444;
+      --radius:       14px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 64px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      padding: 52px 16px 36px;
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent), #9b5de5);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    header h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+    header p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 6px;
+    }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 660px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .card-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .step-num {
+      display: inline-block;
+      width: 20px; height: 20px;
+      background: var(--accent);
+      border-radius: 50%;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-align: center;
+      line-height: 20px;
+      margin-right: 8px;
+      color: white;
+    }
+
+    /* ── Upload zone ── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 44px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .upload-zone:hover,
+    .upload-zone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .upload-icon { font-size: 2.4rem; margin-bottom: 10px; }
+    .upload-title { font-size: 1rem; font-weight: 600; margin-bottom: 5px; }
+    .upload-sub   { font-size: 0.83rem; color: var(--muted); }
+    .upload-formats {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .fmt-tag {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 9px;
+      font-size: 0.73rem;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+    }
+    .file-selected {
+      display: none;
+      margin-top: 16px;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: var(--accent-light);
+      text-align: left;
+    }
+    .file-selected span { color: var(--muted); margin-right: 4px; }
+
+    /* ── Voice grid ── */
+    .voice-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 480px) {
+      .voice-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .voice-card {
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      background: var(--surface2);
+      text-align: center;
+      user-select: none;
+    }
+    .voice-card:hover { border-color: var(--accent); }
+    .voice-card.selected {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
+    .voice-card .vname { font-weight: 700; font-size: 0.95rem; }
+    .voice-card .vdesc { font-size: 0.73rem; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+
+    /* ── Speed ── */
+    .speed-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .speed-label { font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
+    input[type="range"] {
+      flex: 1;
+      appearance: none;
+      height: 5px;
+      background: var(--border);
+      border-radius: 3px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 19px; height: 19px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .speed-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--accent-light);
+      min-width: 52px;
+      text-align: center;
+    }
+
+    /* ── Convert button ── */
+    .convert-btn {
+      width: 100%;
+      padding: 17px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: white;
+      background: linear-gradient(135deg, var(--accent) 0%, #9b5de5 100%);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      letter-spacing: 0.2px;
+      box-shadow: 0 4px 20px rgba(124, 106, 247, 0.3);
+    }
+    .convert-btn:hover:not(:disabled) {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+    .convert-btn:active:not(:disabled) { transform: translateY(0); }
+    .convert-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* ── Progress ── */
+    .progress-card {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      margin-bottom: 16px;
+    }
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .progress-status { font-size: 0.88rem; font-weight: 500; }
+    .progress-pct    { font-size: 0.88rem; font-weight: 700; color: var(--accent-light); }
+    .progress-track  {
+      background: var(--border);
+      border-radius: 5px;
+      height: 9px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-light));
+      border-radius: 5px;
+      transition: width 0.45s ease;
+    }
+    .progress-detail {
+      margin-top: 9px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    /* pulse animation for active state */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .pulse { animation: pulse 1.6s ease-in-out infinite; }
+
+    /* ── Download ── */
+    .download-card {
+      display: none;
+      background: rgba(34, 197, 94, 0.06);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .done-icon  { font-size: 2.6rem; margin-bottom: 8px; }
+    .done-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 4px; }
+    .done-sub   { font-size: 0.85rem; color: var(--muted); margin-bottom: 20px; }
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 30px;
+      background: var(--green);
+      color: white;
+      font-weight: 700;
+      font-size: 0.95rem;
+      border-radius: var(--radius);
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.15s;
+      box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);
+    }
+    .download-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    /* ── Error ── */
+    .error-card {
+      display: none;
+      background: rgba(239, 68, 68, 0.06);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      font-size: 0.88rem;
+      color: #f87171;
+      margin-bottom: 16px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      margin-top: 44px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.8;
+    }
+    footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🎧</div>
+      <h1>Find Reader</h1>
+    </div>
+    <p>Drop any digital book — get a full audiobook in minutes.</p>
+  </header>
+
+  <div class="container">
+
+    <!-- Step 1: Upload -->
+    <div class="card">
+      <div class="card-label"><span class="step-num">1</span>Upload your book</div>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".pdf,.epub,.docx,.doc,.txt">
+        <div class="upload-icon">📖</div>
+        <div class="upload-title">Drop your book here or click to browse</div>
+        <div class="upload-sub">Up to 100 MB</div>
+        <div class="upload-formats">
+          <span class="fmt-tag">PDF</span>
+          <span class="fmt-tag">EPUB</span>
+          <span class="fmt-tag">DOCX</span>
+          <span class="fmt-tag">TXT</span>
+        </div>
+      </div>
+      <div class="file-selected" id="fileSelected">
+        <span>📎</span><span id="fileNameText"></span>
+      </div>
+    </div>
+
+    <!-- Step 2: Voice -->
+    <div class="card">
+      <div class="card-label"><span class="step-num">2</span>Choose a voice</div>
+      <div class="voice-grid" id="voiceGrid">
+        {% for v in voices %}
+        <div class="voice-card {% if loop.first %}selected{% endif %}"
+             data-voice="{{ v.id }}"
+             onclick="selectVoice(this)">
+          <div class="vname">{{ v.label }}</div>
+          <div class="vdesc">{{ v.desc }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Step 3: Speed -->
+    <div class="card">
+      <div class="card-label"><span class="step-num">3</span>Reading speed</div>
+      <div class="speed-row">
+        <span class="speed-label">🐢 Slower</span>
+        <input type="range" id="speedSlider" min="-30" max="30" value="0" oninput="updateSpeed(this)">
+        <span class="speed-label">🐇 Faster</span>
+        <span class="speed-badge" id="speedBadge">+0%</span>
+      </div>
+    </div>
+
+    <!-- Convert button -->
+    <button class="convert-btn" id="convertBtn" onclick="startConversion()">
+      🎵&nbsp;&nbsp;Convert to Audiobook
+    </button>
+
+    <!-- Progress -->
+    <div class="progress-card" id="progressCard">
+      <div class="progress-header">
+        <span class="progress-status pulse" id="progressStatus">Starting...</span>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-detail" id="progressDetail"></div>
+    </div>
+
+    <!-- Download -->
+    <div class="download-card" id="downloadCard">
+      <div class="done-icon">✅</div>
+      <div class="done-title">Your audiobook is ready!</div>
+      <div class="done-sub">Click below to save the MP3 to your device.</div>
+      <a class="download-btn" id="downloadBtn" href="#">
+        ⬇&nbsp; Download MP3
+      </a>
+    </div>
+
+    <!-- Error -->
+    <div class="error-card" id="errorCard"></div>
+
+  </div>
+
+  <footer>
+    Powered by Microsoft Edge TTS &mdash; free, no account needed, high-quality neural voices<br>
+    <a href="https://github.com" target="_blank">View on GitHub</a>
+  </footer>
+
+  <script>
+    let selectedVoice = "{{ voices[0].id }}";
+    let pollTimer = null;
+
+    // ── Voice selection ──
+    function selectVoice(el) {
+      document.querySelectorAll('.voice-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedVoice = el.dataset.voice;
+    }
+
+    // ── Speed slider ──
+    function updateSpeed(el) {
+      const v = parseInt(el.value);
+      document.getElementById('speedBadge').textContent = (v >= 0 ? '+' : '') + v + '%';
+    }
+
+    // ── Drag & drop ──
+    const zone = document.getElementById('uploadZone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) setFile(file);
+    });
+    document.getElementById('fileInput').addEventListener('change', e => {
+      if (e.target.files[0]) setFile(e.target.files[0]);
+    });
+
+    function setFile(file) {
+      document.getElementById('fileNameText').textContent = file.name;
+      document.getElementById('fileSelected').style.display = 'block';
+    }
+
+    // ── Conversion ──
+    async function startConversion() {
+      const input = document.getElementById('fileInput');
+      if (!input.files[0]) {
+        shakeZone();
+        return;
+      }
+
+      const speed  = parseInt(document.getElementById('speedSlider').value);
+      const rate   = (speed >= 0 ? '+' : '') + speed + '%';
+
+      // Reset state
+      hide('downloadCard');
+      hide('errorCard');
+      show('progressCard');
+      document.getElementById('convertBtn').disabled = true;
+      setProgress(3, 'Reading your book...', '');
+
+      const form = new FormData();
+      form.append('file', input.files[0]);
+      form.append('voice', selectedVoice);
+      form.append('rate', rate);
+
+      let jobId;
+      try {
+        const res  = await fetch('/convert', { method: 'POST', body: form });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        jobId = data.job_id;
+      } catch (err) {
+        showError('Upload failed: ' + err.message);
+        return;
+      }
+
+      pollTimer = setInterval(() => poll(jobId), 900);
+    }
+
+    async function poll(jobId) {
+      try {
+        const res = await fetch('/status/' + jobId);
+        const job = await res.json();
+        const s   = job.status;
+
+        if (s === 'extracting') {
+          setProgress(8, 'Extracting text from your book...', '');
+
+        } else if (s === 'converting') {
+          const done  = job.progress  || 0;
+          const total = job.total     || 1;
+          const pct   = Math.round(5 + (done / total) * 88);
+          setProgress(pct, 'Generating audio...', `Segment ${done} of ${total}`);
+
+        } else if (s === 'merging') {
+          setProgress(96, 'Combining audio segments...', 'Almost done!');
+
+        } else if (s === 'done') {
+          clearInterval(pollTimer);
+          setProgress(100, 'Complete!', '');
+          document.getElementById('progressStatus').classList.remove('pulse');
+          setTimeout(() => {
+            hide('progressCard');
+            document.getElementById('downloadBtn').href = '/download/' + jobId;
+            show('downloadCard');
+            document.getElementById('convertBtn').disabled = false;
+          }, 600);
+
+        } else if (s === 'error') {
+          clearInterval(pollTimer);
+          showError(job.error || 'Something went wrong during conversion.');
+        }
+      } catch (_) {
+        // transient network error — keep polling
+      }
+    }
+
+    // ── Helpers ──
+    function setProgress(pct, status, detail) {
+      document.getElementById('progressFill').style.width   = pct + '%';
+      document.getElementById('progressPct').textContent    = pct + '%';
+      document.getElementById('progressStatus').textContent = status;
+      document.getElementById('progressDetail').textContent = detail;
+    }
+
+    function showError(msg) {
+      hide('progressCard');
+      const el = document.getElementById('errorCard');
+      el.textContent = '⚠  ' + msg;
+      show('errorCard');
+      document.getElementById('convertBtn').disabled = false;
+    }
+
+    function show(id) { document.getElementById(id).style.display = 'block'; }
+    function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+    function shakeZone() {
+      zone.style.borderColor = 'var(--red)';
+      setTimeout(() => { zone.style.borderColor = ''; }, 1200);
+    }
+  </script>
+</body>
+</html>
