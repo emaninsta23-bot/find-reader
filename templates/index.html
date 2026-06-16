@@ -111,12 +111,7 @@
       background: var(--accent-glow);
     }
     .upload-zone input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-      width: 100%;
-      height: 100%;
+      display: none;
     }
     .upload-icon { font-size: 2.4rem; margin-bottom: 10px; }
     .upload-title { font-size: 1rem; font-weight: 600; margin-bottom: 5px; }
@@ -431,7 +426,8 @@
 
   <script>
     let selectedVoice = "{{ voices[0].id }}";
-    let pollTimer = null;
+    let selectedFile  = null;
+    let pollTimer     = null;
 
     // ── Voice selection ──
     function selectVoice(el) {
@@ -446,35 +442,43 @@
       document.getElementById('speedBadge').textContent = (v >= 0 ? '+' : '') + v + '%';
     }
 
-    // ── Drag & drop ──
-    const zone = document.getElementById('uploadZone');
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    // ── Drag & drop + click to browse ──
+    const zone      = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+
+    zone.addEventListener('click', () => fileInput.click());
+
+    zone.addEventListener('dragenter', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', e => {
+      if (!zone.contains(e.relatedTarget)) zone.classList.remove('dragover');
+    });
     zone.addEventListener('drop', e => {
       e.preventDefault();
       zone.classList.remove('dragover');
       const file = e.dataTransfer.files[0];
       if (file) setFile(file);
     });
-    document.getElementById('fileInput').addEventListener('change', e => {
+
+    fileInput.addEventListener('change', e => {
       if (e.target.files[0]) setFile(e.target.files[0]);
     });
 
     function setFile(file) {
+      selectedFile = file;
       document.getElementById('fileNameText').textContent = file.name;
       document.getElementById('fileSelected').style.display = 'block';
     }
 
     // ── Conversion ──
     async function startConversion() {
-      const input = document.getElementById('fileInput');
-      if (!input.files[0]) {
+      if (!selectedFile) {
         shakeZone();
         return;
       }
 
-      const speed  = parseInt(document.getElementById('speedSlider').value);
-      const rate   = (speed >= 0 ? '+' : '') + speed + '%';
+      const speed = parseInt(document.getElementById('speedSlider').value);
+      const rate  = (speed >= 0 ? '+' : '') + speed + '%';
 
       // Reset state
       hide('downloadCard');
@@ -484,7 +488,7 @@
       setProgress(3, 'Reading your book...', '');
 
       const form = new FormData();
-      form.append('file', input.files[0]);
+      form.append('file', selectedFile);
       form.append('voice', selectedVoice);
       form.append('rate', rate);
 

@@ -7,7 +7,7 @@ from converter import extract_text, clean_text, split_into_chunks, chunk_to_mp3
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MB max upload
 
-UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR = Path(__file__).parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 # In-memory job store: job_id -> {status, progress, total, output, error, created_at}
@@ -23,6 +23,22 @@ VOICES = [
 ]
 
 
+async def convert_chunks_parallel(chunks, tmpdir, voice, rate, job_id):
+    """Convert all chunks concurrently (up to 10 at a time)."""
+    semaphore = asyncio.Semaphore(10)
+    chunk_files = [None] * len(chunks)
+
+    async def convert_one(i, chunk):
+        async with semaphore:
+            path = os.path.join(tmpdir, f"seg_{i:05d}.mp3")
+            await chunk_to_mp3(chunk, path, voice, rate, "+0Hz")
+            chunk_files[i] = path
+            jobs[job_id]["progress"] = sum(1 for f in chunk_files if f is not None)
+
+    await asyncio.gather(*[convert_one(i, c) for i, c in enumerate(chunks)])
+    return chunk_files
+
+
 def run_conversion(job_id, input_path, output_path, voice, rate):
     try:
         jobs[job_id].update(status="extracting")
@@ -34,12 +50,10 @@ def run_conversion(job_id, input_path, output_path, voice, rate):
         jobs[job_id].update(status="converting", total=total, progress=0)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            chunk_files = []
-            for i, chunk in enumerate(chunks):
-                chunk_path = os.path.join(tmpdir, f"seg_{i:05d}.mp3")
-                asyncio.run(chunk_to_mp3(chunk, chunk_path, voice, rate, "+0Hz"))
-                jobs[job_id]["progress"] = i + 1
-                chunk_files.append(chunk_path)
+            # Run all chunks in parallel instead of one by one
+            chunk_files = asyncio.run(
+                convert_chunks_parallel(chunks, tmpdir, voice, rate, job_id)
+            )
 
             jobs[job_id]["status"] = "merging"
 
